@@ -1,5 +1,5 @@
 import duckdb
-from railbe.stations import Stations
+from railbe.irail import RailRequest
 
 
 class RailDB():
@@ -23,12 +23,14 @@ class RailDB():
         return [table[0] for table in tables]
 
     def update_stations(self):
-        stations = Stations()
-        stations.stationdf.to_parquet("stations.parquet")
-        self.save_table(file = "stations.parquet",
-                        tablename = "stations",
+        endpoint = "stations"
+        filename = f"{endpoint}.parquet"
+        stations = RailRequest(endpoint)
+        stations.df.to_parquet(filename)
+        self.save_table(file = filename,
+                        tablename = endpoint,
                         update = True)
-        print(f"Saved table with {len(stations.stationdf)} stations to database.")
+        print(f"Saved table with {len(stations.df)} stations to database.")
 
     @property
     def stationids(self):
