@@ -9,3 +9,7 @@ import pandas as pd
 def test_request(endpoint, id):
     request = RailRequest(endpoint = endpoint, id = id, application = "tests")
     assert type(request.df) == pd.DataFrame
+
+def test_liveboard():
+    with pytest.raises(ValueError, match = "For liveboard requests, you must provide a stationid."):
+        RailRequest(endpoint = "liveboard")
