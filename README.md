@@ -7,6 +7,6 @@
 - Vervolgens de vertrekborden ophalen: https://api.irail.be/liveboard/?id=BE.NMBS.008892007&lang=nl&format=json
     - *Deze haal je natuurlijk op voor elk station, dus de id-code verwijst naar het stations-ID*
 - **Nieuw punt:**
-    - Gebruik DuckDB (zie [DuckDB In Action](https://www.notion.so/DuckDB-In-Action-1347017c398580629eabdcc8e0019a3a?pvs=21) hoofdstuk 1, 2, 5, 6)
+    - Gebruik DuckDB (zie [DuckDB In Action](https://motherduck.com/duckdb-book-brief/) hoofdstuk 1, 2, 5, 6)
     - Sla de JSON op als .parquet files
     - Denk na over een retention policy: hoe lang sla je de Parquet-files op? (dit wordt m.n. relevant zodra je de data regelmatig, bijv. via Airflow, op gaat halen)
