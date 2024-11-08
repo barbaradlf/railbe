@@ -6,10 +6,6 @@ class RailRequest():
     API = "https://api.irail.be"
     VERSION = "v1"
     SUFFIX = "format=json&lang=nl"
-    ENDPOINT = {
-        "stations": "stations",
-        "liveboard": "liveboard"
-    }
     KEY = {
         "stations": "station",
         "liveboard": "departures.departure"
@@ -24,21 +20,21 @@ class RailRequest():
         self.headers = {
             "user-agent": f"{application} ({website}; {email})"
         }
-        if endpoint not in self.ENDPOINT.keys():
-            raise ValueError(f"Endpoint must be one of {self.ENDPOINT.keys()}.")
+        if endpoint not in self.KEY.keys():
+            raise ValueError(f"Endpoint must be one of {self.KEY.keys()}.")
         if endpoint == "liveboard" and not id:
             raise ValueError("For liveboard requests, you must provide a stationid.")
         if id:
             self.id = f"id={id}"
         else:
             self.id = ""
-        self.ENDPOINT = self.ENDPOINT[endpoint]
+        self.endpoint = endpoint
         self.KEY = self.KEY[endpoint]
 
     @property
     def url(self):
         if not hasattr(self, "_url"):
-            self._url = f"{self.API}/{self.VERSION}/{self.ENDPOINT}/?{self.id}&{self.SUFFIX}"
+            self._url = f"{self.API}/{self.VERSION}/{self.endpoint}/?{self.id}&{self.SUFFIX}"
         return self._url
 
     def get_response(self):
@@ -47,6 +43,7 @@ class RailRequest():
             warn(f"Request failed with status code {response.status_code}. Response is not updated.")
         else:
             print(f"Successfully retrieved data from {self.url}")
+            # update response object only if the status code is 200 (OK)
             self._response = response
 
     @property
