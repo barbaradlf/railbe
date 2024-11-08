@@ -1,12 +1,20 @@
 import duckdb
+import os
+import time
 from railbe.irail import RailRequest
+from pathlib import Path
+
 
 
 class RailDB():
-    def __init__(self, dbname, path = "."):
-        self.conn = duckdb.connect(dbname)
+    def __init__(self, dbname, dir = "data"):
+        self.outdir = Path(dir)
+        if not os.path.exists(self.outdir):
+            os.mkdir(self.outdir)
+        self.dbpath = Path(dir, dbname).with_suffix(".db")
+        self.conn = duckdb.connect(self.dbpath)
 
-    def save_table(self, file, tablename, append = False, update = False):
+    def _save_table(self, file, tablename, append = False, update = False):
         if tablename not in self.tables:
             self.conn.sql(f"CREATE TABLE {tablename} AS SELECT * FROM read_parquet('{file}')")
         elif append:
@@ -27,7 +35,7 @@ class RailDB():
         filename = f"{endpoint}.parquet"
         stations = RailRequest(endpoint)
         stations.df.to_parquet(filename)
-        self.save_table(file = filename,
+        self._save_table(file = filename,
                         tablename = endpoint,
                         update = True)
         print(f"Saved table with {len(stations.df)} stations to database.")
@@ -41,18 +49,21 @@ class RailDB():
         return [station_id[0] for station_id in station_ids]
 
     def update_liveboard(self):
-        self.empty_liveboard()
+        self._empty_liveboard()
         for stationid in self.stationids:
             endpoint = "liveboard"
-            filename = f"{endpoint}_{stationid}.parquet"
-            liveboard = RailRequest(endpoint, id = stationid)
-            liveboard.df.to_parquet(filename)
-            self.save_table(file = filename,
+            filename = Path(self.outdir, f"{endpoint}_{stationid}").with_suffix(".parquet")
+            lb = RailRequest(endpoint, id = stationid)
+            lb.get_response()
+            if lb.response.status_code == 429:
+                time.sleep(10)
+            lb.df.to_parquet(filename)
+            self._save_table(file = filename,
                             tablename = "liveboard",
                             append = True)
             print(f"Updating liveboard for station {stationid}")
 
-    def empty_liveboard(self):
+    def _empty_liveboard(self):
         try:
             self.conn.sql("DROP TABLE liveboard;")
         except duckdb.CatalogException:
