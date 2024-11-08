@@ -41,8 +41,22 @@ class RailDB():
         return [station_id[0] for station_id in station_ids]
 
     def update_liveboard(self):
+        self.empty_liveboard()
         for stationid in self.stationids:
+            endpoint = "liveboard"
+            filename = f"{endpoint}_{stationid}.parquet"
+            liveboard = RailRequest(endpoint, id = stationid)
+            liveboard.df.to_parquet(filename)
+            self.save_table(file = filename,
+                            tablename = "liveboard",
+                            append = True)
             print(f"Updating liveboard for station {stationid}")
+
+    def empty_liveboard(self):
+        try:
+            self.conn.sql("DROP TABLE liveboard;")
+        except duckdb.CatalogException:
+            pass
 
     def close(self):
         self.conn.close()
