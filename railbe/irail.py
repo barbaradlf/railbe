@@ -12,7 +12,7 @@ class RailRequest():
     }
     KEY = {
         "stations": "station",
-        "liveboard": "departures"
+        "liveboard": "departures.departure"
     }
 
     def __init__(self,
@@ -58,12 +58,13 @@ class RailRequest():
         else:
             raise AttributeError("Response not available.")
 
-    def get_df(self, key: str = None):
+    def get_df(self):
         data = self.response.json()
-        if key:
+        key = self.KEY.split(".")
+        for key in key:
             data = data[key]
         return pd.json_normalize(data)
 
     @property
     def df(self):
-        return self.get_df(self.KEY)
+        return self.get_df()
