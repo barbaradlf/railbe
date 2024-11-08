@@ -10,5 +10,3 @@ def test_station():
     assert stations.STATIONKEY in station_data.keys()
 
     assert type(stations.stationdf) == pd.DataFrame
-
-    stations.save_parquet(key = stations.STATIONKEY, filename = "data/stations.parquet")

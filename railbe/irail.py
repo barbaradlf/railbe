@@ -23,6 +23,7 @@ class RailRequest(abc.ABC):
         if response.status_code != 200:
             warn(f"Request failed with status code {response.status_code}. Response is not updated.")
         else:
+            print(f"Successfully retrieved data from {self.url}")
             self._response = response
 
     @property
@@ -39,7 +40,3 @@ class RailRequest(abc.ABC):
         if key:
             data = data[key]
         return pd.json_normalize(data)
-
-    def save_parquet(self, key: str = None, filename: str = None):
-        df = self.get_df(key)
-        df.to_parquet(filename)
