@@ -1,8 +1,8 @@
 import duckdb
 import os
-import time
 from railbe.irail import RailRequest
 from pathlib import Path
+import pandas as pd
 
 
 
@@ -32,8 +32,8 @@ class RailDB():
 
     def update_stations(self):
         endpoint = "stations"
-        filename = f"{endpoint}.parquet"
-        stations = RailRequest(endpoint)
+        filename = Path(self.outdir, f"{endpoint}").with_suffix(".parquet")
+        stations = RailRequest(endpoint, with_wait = False)
         stations.df.to_parquet(filename)
         self._save_table(file = filename,
                         tablename = endpoint,
@@ -42,26 +42,35 @@ class RailDB():
 
     @property
     def stationids(self):
-        try:
-            station_ids = self.conn.sql("SELECT id FROM stations;").fetchall()
-        except duckdb.CatalogException:
+        if not "stations" in self.tables:
             raise AttributeError("Table stations not available. Run `update_stations()` first.")
-        return [station_id[0] for station_id in station_ids]
+        station_ids = self.conn.sql("SELECT id FROM stations;").fetchall()
+        station_ids = [station_id[0] for station_id in station_ids]
+        station_names = self.conn.sql("SELECT name FROM stations;").fetchall()
+        station_names = [station_name[0] for station_name in station_names]
+        return dict(zip(station_ids, station_names))
 
-    def update_liveboard(self):
-        self._empty_liveboard()
-        for stationid in self.stationids:
-            endpoint = "liveboard"
-            filename = Path(self.outdir, f"{endpoint}_{stationid}").with_suffix(".parquet")
-            lb = RailRequest(endpoint, id = stationid)
-            lb.get_response()
-            if lb.response.status_code == 429:
-                time.sleep(10)
-            lb.df.to_parquet(filename)
+    def update_liveboard(self, stationids = None, append = False):
+        if not append:
+            self._empty_liveboard()
+        if stationids is None:
+            stationids = self.stationids
+        endpoint = "liveboard"
+        for stationid in stationids:
+            stationname = self.stationids[stationid]
+            filename = Path(self.outdir, f"{endpoint}_{stationid}.").with_suffix(".parquet")
+            print(f"Updating liveboard for station {stationname}...")
+            lb = RailRequest(endpoint, id = stationid, with_wait = True)
+            try:
+                stationdata = lb.df
+                stationdata["stationid"] = stationid
+            except KeyError:
+                stationdata = pd.DataFrame({"stationid": [stationid]})
+            stationdata.to_parquet(filename)
             self._save_table(file = filename,
                             tablename = "liveboard",
                             append = True)
-            print(f"Updating liveboard for station {stationid}")
+            print(f"SUCCESS! Liveboard retrieved for station {stationname}.")
 
     def _empty_liveboard(self):
         try:
