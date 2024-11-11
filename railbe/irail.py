@@ -1,6 +1,7 @@
 import requests
 from warnings import warn
 import pandas as pd
+import time
 
 class RailRequest():
     API = "https://api.irail.be"
@@ -10,17 +11,21 @@ class RailRequest():
         "stations": "station",
         "liveboard": "departures.departure"
     }
+    RATE = 3 # max requests per second
 
     def __init__(self,
                  endpoint: str,
                  id: str = None,
                  application: str = "demo",
                  website: str = "https://www.datalab.nl",
-                 email: str = "barbara@datalab.nl"):
+                 email: str = "barbara@datalab.nl",
+                 with_wait: bool = True):
         self.headers = {
             "user-agent": f"{application} ({website}; {email})"
         }
-        if endpoint not in self.KEY.keys():
+        try:
+            self.KEY = self.KEY[endpoint]
+        except KeyError:
             raise ValueError(f"Endpoint must be one of {self.KEY.keys()}.")
         if endpoint == "liveboard" and not id:
             raise ValueError("For liveboard requests, you must provide a stationid.")
@@ -29,7 +34,10 @@ class RailRequest():
         else:
             self.id = ""
         self.endpoint = endpoint
-        self.KEY = self.KEY[endpoint]
+        # the rate limit is RATE requests per second. To prevent 429 errors
+        # we can opt to pre-emptively wait before making the request.
+        # if with_wait is False, the wait time is set to 0.
+        self._preemptive_wait = with_wait * (1. / self.RATE)
 
     @property
     def url(self):
@@ -38,7 +46,19 @@ class RailRequest():
         return self._url
 
     def get_response(self):
-        response = requests.get(self.url, headers=self.headers)
+        '''
+        Retrieve data from the API and store it in the _response attribute.
+        '''
+        time.sleep(self._preemptive_wait)
+        status = 429
+        count_429 = 0
+        while status == 429 and count_429 < 5:
+            response = requests.get(self.url, headers=self.headers)
+            status = response.status_code
+            if status == 429:
+                warn("Rate limit exceeded. Waiting 2 seconds before retrying.")
+                time.sleep(2)
+                count_429 += 1
         if response.status_code != 200:
             warn(f"Request failed with status code {response.status_code}. Response is not updated.")
         else:
@@ -55,13 +75,10 @@ class RailRequest():
         else:
             raise AttributeError("Response not available.")
 
-    def get_df(self):
-        data = self.response.json()
-        key = self.KEY.split(".")
-        for key in key:
-            data = data[key]
-        return pd.json_normalize(data)
-
     @property
     def df(self):
-        return self.get_df()
+        data = self.response.json()
+        keysplit = self.KEY.split(".")
+        for key in keysplit:
+            data = data[key] # data is updated with subkeys
+        return pd.json_normalize(data)
