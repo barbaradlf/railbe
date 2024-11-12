@@ -61,16 +61,16 @@ class RailDB():
             filename = Path(self.outdir, f"{endpoint}_{stationid}.").with_suffix(".parquet")
             print(f"Updating liveboard for station {stationname}...")
             lb = RailRequest(endpoint, id = stationid, with_wait = True)
-            try:
-                stationdata = lb.df
-                stationdata["stationid"] = stationid
-            except KeyError:
-                stationdata = pd.DataFrame({"stationid": [stationid]})
-            stationdata.to_parquet(filename)
-            self._save_table(file = filename,
-                            tablename = "liveboard",
-                            append = True)
-            print(f"SUCCESS! Liveboard retrieved for station {stationname}.")
+            stationdata = lb.df
+            stationdata["stationid"] = stationid
+            if stationdata.shape[0] > 0:
+                stationdata.to_parquet(filename)
+                self._save_table(file = filename,
+                                tablename = "liveboard",
+                                append = True)
+                print(f"SUCCESS! Liveboard retrieved for station {stationname}.")
+            else:
+                print(f"Liveboard retrieved for {stationname}, but no data was available.")
 
     def _empty_liveboard(self):
         try:
